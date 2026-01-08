@@ -2,23 +2,24 @@
 use std::io::{self, Write};
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
-use std::process::exit;
+use std::process::{Command, exit};
+use std::result::Result::Ok;
 use std::{env, fs};
 
-enum Command {
+enum Cmd {
     Exit,
     Echo,
     Type,
-    CommandNotFound,
+    Run,
 }
 
-impl Command {
+impl Cmd {
     fn parse(s: &str) -> Self {
         match s {
-            "exit" => Command::Exit,
-            "echo" => Command::Echo,
-            "type" => Command::Type,
-            _ => Command::CommandNotFound,
+            "exit" => Cmd::Exit,
+            "echo" => Cmd::Echo,
+            "type" => Cmd::Type,
+            _ => Cmd::Run,
         }
     }
 }
@@ -51,13 +52,13 @@ fn main() {
         let input = command.trim();
         let parts: Vec<&str> = input.split_whitespace().collect();
 
-        match Command::parse(parts[0]) {
-            Command::Exit => exit(0),
-            Command::Echo => {
+        match Cmd::parse(parts[0]) {
+            Cmd::Exit => exit(0),
+            Cmd::Echo => {
                 let msg = &parts[1..];
                 println!("{}", msg.join(" "))
             }
-            Command::Type => match parts[1] {
+            Cmd::Type => match parts[1] {
                 "exit" | "echo" | "type" => println!("{} is a shell builtin", parts[1]),
                 _ => {
                     if let Some(path) = find_executable(parts[1]) {
@@ -67,8 +68,18 @@ fn main() {
                     }
                 }
             },
-            Command::CommandNotFound => {
-                println!("{}: command not found", input);
+            Cmd::Run => {
+                let program_name = parts[0];
+                let args = &parts[1..];
+
+                match Command::new(program_name).args(args).spawn() {
+                    Ok(mut child) => {
+                        let _ = child.wait();
+                    }
+                    Err(_) => {
+                        println!("{}: command not found", input)
+                    }
+                }
             }
         }
     }
