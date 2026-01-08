@@ -11,6 +11,7 @@ enum Cmd {
     Echo,
     Type,
     Run,
+    Pwd,
 }
 
 impl Cmd {
@@ -19,6 +20,7 @@ impl Cmd {
             "exit" => Cmd::Exit,
             "echo" => Cmd::Echo,
             "type" => Cmd::Type,
+            "pwd" => Cmd::Pwd,
             _ => Cmd::Run,
         }
     }
@@ -59,7 +61,7 @@ fn main() {
                 println!("{}", msg.join(" "))
             }
             Cmd::Type => match parts[1] {
-                "exit" | "echo" | "type" => println!("{} is a shell builtin", parts[1]),
+                "exit" | "echo" | "type" | "pwd" => println!("{} is a shell builtin", parts[1]),
                 _ => {
                     if let Some(path) = find_executable(parts[1]) {
                         println!("{} is {}", parts[1], path);
@@ -80,6 +82,10 @@ fn main() {
                         println!("{}: command not found", input)
                     }
                 }
+            }
+            Cmd::Pwd => {
+                let path = env::current_dir().expect("Not existing");
+                println!("{}", path.display());
             }
         }
     }
