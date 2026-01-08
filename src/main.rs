@@ -1,3 +1,4 @@
+use std::env::set_current_dir;
 #[allow(unused_imports)]
 use std::io::{self, Write};
 use std::os::unix::fs::PermissionsExt;
@@ -12,6 +13,7 @@ enum Cmd {
     Type,
     Run,
     Pwd,
+    Cd,
 }
 
 impl Cmd {
@@ -21,6 +23,7 @@ impl Cmd {
             "echo" => Cmd::Echo,
             "type" => Cmd::Type,
             "pwd" => Cmd::Pwd,
+            "cd" => Cmd::Cd,
             _ => Cmd::Run,
         }
     }
@@ -61,7 +64,9 @@ fn main() {
                 println!("{}", msg.join(" "))
             }
             Cmd::Type => match parts[1] {
-                "exit" | "echo" | "type" | "pwd" => println!("{} is a shell builtin", parts[1]),
+                "exit" | "echo" | "type" | "pwd" | "cd" => {
+                    println!("{} is a shell builtin", parts[1])
+                }
                 _ => {
                     if let Some(path) = find_executable(parts[1]) {
                         println!("{} is {}", parts[1], path);
@@ -86,6 +91,13 @@ fn main() {
             Cmd::Pwd => {
                 let path = env::current_dir().expect("Not existing");
                 println!("{}", path.display());
+            }
+            Cmd::Cd => {
+                if Path::new(parts[1]).exists() {
+                    set_current_dir(parts[1]).expect("Failed changing directory")
+                } else {
+                    println!("cd: {}: No such file or directory", parts[1])
+                }
             }
         }
     }
