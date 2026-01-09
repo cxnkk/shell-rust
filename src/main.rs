@@ -47,6 +47,35 @@ fn find_executable(command_name: &str) -> Option<String> {
     None
 }
 
+fn pars_args(input: &str) -> Vec<String> {
+    let mut args = Vec::new();
+    let mut current_arg = String::new();
+    let mut in_single_quotes = false;
+
+    for c in input.chars() {
+        match c {
+            '\'' => {
+                in_single_quotes = !in_single_quotes;
+            }
+            ' ' | '\t' if !in_single_quotes => {
+                if !current_arg.is_empty() {
+                    args.push(current_arg);
+                    current_arg = String::new();
+                }
+            }
+            _ => {
+                current_arg.push(c);
+            }
+        }
+    }
+
+    if !current_arg.is_empty() {
+        args.push(current_arg);
+    }
+
+    args
+}
+
 fn main() {
     loop {
         print!("$ ");
@@ -55,20 +84,25 @@ fn main() {
         let mut command = String::new();
         io::stdin().read_line(&mut command).unwrap();
         let input = command.trim();
-        let parts: Vec<&str> = input.split_whitespace().collect();
+        let parts: Vec<String> = pars_args(input);
 
-        match Cmd::parse(parts[0]) {
+        match Cmd::parse(&parts[0]) {
             Cmd::Exit => exit(0),
             Cmd::Echo => {
-                let msg = &parts[1..];
-                println!("{}", msg.join(" "))
+                let msg = &mut parts[1..].join(" ");
+                if msg.contains("'") {
+                    msg.retain(|c| c != '\'');
+                    println!("{}", msg)
+                } else {
+                    println!("{}", msg)
+                }
             }
-            Cmd::Type => match parts[1] {
+            Cmd::Type => match parts[1].as_str() {
                 "exit" | "echo" | "type" | "pwd" | "cd" => {
                     println!("{} is a shell builtin", parts[1])
                 }
                 _ => {
-                    if let Some(path) = find_executable(parts[1]) {
+                    if let Some(path) = find_executable(&parts[1]) {
                         println!("{} is {}", parts[1], path);
                     } else {
                         println!("{}: not found", parts[1])
@@ -76,7 +110,7 @@ fn main() {
                 }
             },
             Cmd::Run => {
-                let program_name = parts[0];
+                let program_name = &parts[0];
                 let args = &parts[1..];
 
                 match Command::new(program_name).args(args).spawn() {
@@ -92,14 +126,14 @@ fn main() {
                 let path = env::current_dir().expect("Not existing");
                 println!("{}", path.display());
             }
-            Cmd::Cd => match parts[1] {
+            Cmd::Cd => match parts[1].as_str() {
                 "~" => {
                     let home = env::home_dir().expect("No home dir found");
                     set_current_dir(home).expect("Failed changing directory")
                 }
                 _ => {
-                    if Path::new(parts[1]).exists() {
-                        set_current_dir(parts[1]).expect("Failed changing directory")
+                    if Path::new(&parts[1]).exists() {
+                        set_current_dir(&parts[1]).expect("Failed changing directory")
                     } else {
                         println!("cd: {}: No such file or directory", parts[1])
                     }
