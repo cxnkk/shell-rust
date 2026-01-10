@@ -65,18 +65,20 @@ fn pars_args(input: &str) -> Vec<String> {
             }
             '\'' => {
                 if in_double_quotes {
-                    current_arg.push(c)
+                    current_arg.push(c);
                 } else if backslash {
                     current_arg.push(c);
                     backslash = !backslash;
                 } else {
-                    in_single_quotes = !in_single_quotes
+                    in_single_quotes = !in_single_quotes;
                 }
             }
             '"' => {
                 if backslash {
                     current_arg.push(c);
                     backslash = !backslash;
+                } else if in_single_quotes {
+                    current_arg.push(c);
                 } else {
                     in_double_quotes = !in_double_quotes;
                 }
