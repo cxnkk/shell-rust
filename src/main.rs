@@ -1,9 +1,10 @@
 use std::env::set_current_dir;
 #[allow(unused_imports)]
+use std::fs::File;
 use std::io::{self, Write};
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
-use std::process::{Command, exit};
+use std::process::{Command, Stdio, exit};
 use std::result::Result::Ok;
 use std::{env, fs};
 
@@ -121,7 +122,30 @@ fn main() {
         match Cmd::parse(&parts[0]) {
             Cmd::Exit => exit(0),
             Cmd::Echo => {
-                println!("{}", &mut parts[1..].join(" "))
+                let mut args = parts[1..].to_vec();
+                let mut output_file: Option<File> = None;
+
+                if let Some(index) = args
+                    .iter()
+                    .position(|operator| operator == ">" || operator == "1>")
+                {
+                    if index + 1 < args.len() {
+                        let filename = &args[index + 1];
+                        if let Ok(file) = File::create(filename) {
+                            output_file = Some(file)
+                        }
+
+                        args.remove(index + 1);
+                        args.remove(index);
+                    }
+                }
+
+                let output_text = args.join(" ");
+
+                match output_file {
+                    Some(mut file) => writeln!(file, "{}", output_text).unwrap(),
+                    None => println!("{}", output_text),
+                }
             }
             Cmd::Type => match parts[1].as_str() {
                 "exit" | "echo" | "type" | "pwd" | "cd" => {
@@ -137,9 +161,30 @@ fn main() {
             },
             Cmd::Run => {
                 let program_name = &parts[0];
-                let args = &parts[1..];
+                let mut args = parts[1..].to_vec();
+                let mut stdout_dest = Stdio::inherit();
 
-                match Command::new(program_name).args(args).spawn() {
+                if let Some(index) = args
+                    .iter()
+                    .position(|operator| operator == ">" || operator == "1>")
+                {
+                    if index + 1 < args.len() {
+                        let filename = &args[index + 1];
+
+                        let file = File::create(filename).unwrap();
+
+                        stdout_dest = Stdio::from(file);
+
+                        args.remove(index + 1);
+                        args.remove(index);
+                    }
+                }
+
+                match Command::new(program_name)
+                    .args(args)
+                    .stdout(stdout_dest)
+                    .spawn()
+                {
                     Ok(mut child) => {
                         let _ = child.wait();
                     }
