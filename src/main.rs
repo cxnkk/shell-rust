@@ -109,6 +109,39 @@ fn parse_args(input: &str) -> Vec<String> {
     args
 }
 
+fn parse_redirection(args: &mut Vec<String>) -> (Option<File>, Option<File>) {
+    let mut stdout_file = None;
+    let mut stderr_file = None;
+
+    let mut i = 0;
+
+    while i < args.len() {
+        let arg = &args[i].clone();
+
+        if arg == ">" || arg == "1>" || arg == "2>" {
+            if i + 1 >= args.len() {
+                break;
+            }
+
+            let filename = &args[i + 1];
+            let file = File::create(filename).unwrap();
+
+            if arg == "2>" {
+                stderr_file = Some(file);
+            } else {
+                stdout_file = Some(file);
+            }
+
+            args.remove(i);
+            args.remove(i);
+        } else {
+            i += 1;
+        }
+    }
+
+    (stdout_file, stderr_file)
+}
+
 fn main() {
     loop {
         print!("$ ");
@@ -123,28 +156,16 @@ fn main() {
             Cmd::Exit => exit(0),
             Cmd::Echo => {
                 let mut args = parts[1..].to_vec();
-                let mut output_file: Option<File> = None;
 
-                if let Some(index) = args
-                    .iter()
-                    .position(|operator| operator == ">" || operator == "1>")
-                {
-                    if index + 1 < args.len() {
-                        let filename = &args[index + 1];
-                        if let Ok(file) = File::create(filename) {
-                            output_file = Some(file)
-                        }
-
-                        args.remove(index + 1);
-                        args.remove(index);
-                    }
-                }
+                let (stdout_opt, _stderr_opt) = parse_redirection(&mut args);
 
                 let output_text = args.join(" ");
 
-                match output_file {
+                match stdout_opt {
                     Some(mut file) => writeln!(file, "{}", output_text).unwrap(),
-                    None => println!("{}", output_text),
+                    None => {
+                        println!("{}", output_text);
+                    }
                 }
             }
             Cmd::Type => match parts[1].as_str() {
@@ -162,27 +183,23 @@ fn main() {
             Cmd::Run => {
                 let program_name = &parts[0];
                 let mut args = parts[1..].to_vec();
-                let mut stdout_dest = Stdio::inherit();
 
-                if let Some(index) = args
-                    .iter()
-                    .position(|operator| operator == ">" || operator == "1>")
-                {
-                    if index + 1 < args.len() {
-                        let filename = &args[index + 1];
+                let (stdout_opt, stderr_opt) = parse_redirection(&mut args);
 
-                        let file = File::create(filename).unwrap();
+                let stdout_dest = match stdout_opt {
+                    Some(f) => Stdio::from(f),
+                    None => Stdio::inherit(),
+                };
 
-                        stdout_dest = Stdio::from(file);
-
-                        args.remove(index + 1);
-                        args.remove(index);
-                    }
-                }
+                let stderr_dest = match stderr_opt {
+                    Some(f) => Stdio::from(f),
+                    None => Stdio::inherit(),
+                };
 
                 match Command::new(program_name)
                     .args(args)
                     .stdout(stdout_dest)
+                    .stderr(stderr_dest)
                     .spawn()
                 {
                     Ok(mut child) => {
