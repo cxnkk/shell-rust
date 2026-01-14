@@ -1,6 +1,6 @@
 use std::env::set_current_dir;
 #[allow(unused_imports)]
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::io::{self, Write};
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
@@ -118,18 +118,34 @@ fn parse_redirection(args: &mut Vec<String>) -> (Option<File>, Option<File>) {
     while i < args.len() {
         let arg = &args[i].clone();
 
-        if arg == ">" || arg == "1>" || arg == "2>" {
+        if arg == ">" || arg == "1>" || arg == "2>" || arg == ">>" || arg == "1>>" {
             if i + 1 >= args.len() {
                 break;
             }
 
             let filename = &args[i + 1];
-            let file = File::create(filename).unwrap();
 
-            if arg == "2>" {
-                stderr_file = Some(file);
-            } else {
-                stdout_file = Some(file);
+            match arg.as_str() {
+                ">" | "1>" => {
+                    let file = File::create(filename).unwrap();
+
+                    stdout_file = Some(file)
+                }
+                ">>" | "1>>" => {
+                    let file = OpenOptions::new()
+                        .append(true)
+                        .create(true)
+                        .open(filename)
+                        .expect("Cannot open file.");
+
+                    stdout_file = Some(file)
+                }
+                "2>" => {
+                    let file = File::create(filename).unwrap();
+
+                    stderr_file = Some(file)
+                }
+                _ => todo!(),
             }
 
             args.remove(i);
