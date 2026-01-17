@@ -3,7 +3,6 @@ use std::fs::{File, OpenOptions};
 pub fn parse_redirection(args: &mut Vec<String>) -> (Option<File>, Option<File>) {
     let mut stdout_file = None;
     let mut stderr_file = None;
-
     let mut i = 0;
 
     while i < args.len() {
