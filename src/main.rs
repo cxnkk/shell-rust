@@ -52,12 +52,15 @@ fn main() {
     loop {
         enable_raw_mode().unwrap();
 
+        let mut history_index = local_history.len();
+
         print!("$ ");
         stdout.flush().unwrap();
 
         let mut input_buffer = String::new();
         let mut cursor_position = 0;
         let mut tab_press_count = 0;
+        let mut up_arrow_count = false;
 
         loop {
             if let Event::Key(key) = event::read().unwrap() {
@@ -152,6 +155,25 @@ fn main() {
                             cursor_position += 1;
                             print!("{}", c);
                             stdout.flush().unwrap();
+                        }
+                    }
+                    KeyCode::Up => {
+                        if up_arrow_count {
+                            stdout.execute(cursor::MoveToColumn(0)).unwrap();
+                            stdout.execute(Clear(ClearType::CurrentLine)).unwrap();
+
+                            print!("$ {}", input_buffer);
+                            stdout.flush().unwrap();
+                        }
+
+                        if history_index > 0 {
+                            history_index -= 1;
+
+                            let last_cmd = &local_history[history_index];
+                            print!("{}", last_cmd);
+                            stdout.flush().unwrap();
+
+                            up_arrow_count = true;
                         }
                     }
                     _ => {}
