@@ -15,7 +15,7 @@ use crossterm::{
     event::{self, Event, KeyCode, KeyModifiers},
     terminal::{Clear, ClearType, disable_raw_mode, enable_raw_mode},
 };
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::io::{Read, Write};
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
@@ -323,6 +323,17 @@ fn main() {
 
                                                         for cmd in contents.lines() {
                                                             local_history.push(cmd.to_string());
+                                                        }
+                                                    }
+                                                    "-w" => {
+                                                        let mut file = OpenOptions::new()
+                                                            .write(true)
+                                                            .create(true)
+                                                            .open(&parts[2])
+                                                            .unwrap();
+
+                                                        for lines in &local_history {
+                                                            let _ = writeln!(file, "{}", lines);
                                                         }
                                                     }
                                                     _ => todo!(),
