@@ -278,8 +278,22 @@ fn main() {
                                         }
                                     },
                                     Cmd::History => {
-                                        for (i, cmd) in local_history.iter().enumerate() {
-                                            println!("  {}  {}", i + 1, cmd);
+                                        if parts.len() == 1 {
+                                            for (i, cmd) in local_history.iter().enumerate() {
+                                                println!("  {}  {}", i + 1, cmd);
+                                            }
+                                        } else {
+                                            if let Ok(limiter) = parts[1].parse::<u8>() {
+                                                for (i, last_cmd) in local_history
+                                                    .iter()
+                                                    .enumerate()
+                                                    .rev()
+                                                    .take(limiter.into())
+                                                    .rev()
+                                                {
+                                                    println!("  {}  {}", i + 1, last_cmd);
+                                                }
+                                            }
                                         }
                                     }
                                 }
