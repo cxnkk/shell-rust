@@ -60,7 +60,7 @@ fn main() {
         let mut input_buffer = String::new();
         let mut cursor_position = 0;
         let mut tab_press_count = 0;
-        let mut up_arrow_count = false;
+        let mut arrow_count = false;
 
         loop {
             if let Event::Key(key) = event::read().unwrap() {
@@ -158,7 +158,7 @@ fn main() {
                         }
                     }
                     KeyCode::Up => {
-                        if up_arrow_count {
+                        if arrow_count {
                             stdout.execute(cursor::MoveToColumn(0)).unwrap();
                             stdout.execute(Clear(ClearType::CurrentLine)).unwrap();
 
@@ -173,7 +173,24 @@ fn main() {
                             print!("{}", last_cmd);
                             stdout.flush().unwrap();
 
-                            up_arrow_count = true;
+                            arrow_count = true;
+                        }
+                    }
+                    KeyCode::Down => {
+                        if arrow_count {
+                            stdout.execute(cursor::MoveToColumn(0)).unwrap();
+                            stdout.execute(Clear(ClearType::CurrentLine)).unwrap();
+
+                            print!("$ {}", input_buffer);
+                            stdout.flush().unwrap();
+                        }
+
+                        if history_index > 0 {
+                            history_index += 1;
+
+                            let cmd = &local_history[history_index];
+                            print!("{}", cmd);
+                            stdout.flush().unwrap();
                         }
                     }
                     _ => {}
