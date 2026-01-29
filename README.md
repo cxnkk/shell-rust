@@ -11,25 +11,87 @@ REPLs, builtin commands, and more.
 **Note**: If you're viewing this repo on GitHub, head over to
 [codecrafters.io](https://codecrafters.io) to try the challenge.
 
-# Passing the first stage
+Rust Shell (rsh)
 
-The entry point for your `shell` implementation is in `src/main.rs`. Study and
-uncomment the relevant code, and push your changes to pass the first stage:
+A POSIX-compliant shell implementation written in Rust. This project explores the intricacies of process management, standard stream manipulation, and terminal raw mode handling to build a functional command-line interface from scratch.
+🚀 Features
 
-```sh
-git commit -am "pass 1st stage" # any msg
-git push origin master
-```
+1. Core Functionality
 
-Time to move on to the next stage!
+   REPL (Read-Eval-Print Loop): Custom input handling loop supporting standard shell interaction.
 
-# Stage 2 & beyond
+   External Commands: Executes system binaries found in the $PATH environment variable.
 
-Note: This section is for stages 2 and beyond.
+   Input Parsing: robust handling of single quotes ('), double quotes ("), and backslash escaping.
 
-1. Ensure you have `cargo (1.91)` installed locally
-1. Run `./your_program.sh` to run your program, which is implemented in
-   `src/main.rs`. This command compiles your Rust project, so it might be slow
-   the first time you run it. Subsequent runs will be fast.
-1. Commit your changes and run `git push origin master` to submit your solution
-   to CodeCrafters. Test output will be streamed to your terminal.
+2. Built-in Commands
+
+Hand-rolled implementations of standard shell built-ins:
+
+    cd: Change directory (supports absolute and relative paths).
+
+    pwd: Print working directory.
+
+    echo: Print arguments to stdout.
+
+    type: Inspect command types (builtin vs. executable path).
+
+    exit: Terminate the shell with a status code.
+
+    history: View session command history.
+
+3.  Advanced Process Management
+
+    Pipelines (|): Full support for chaining commands (e.g., ls -l | grep ".rs" | wc -l).
+
+        Implementation: Manually wires stdout of one child process to the stdin of the next using Stdio::piped() and Stdio::from_raw_fd.
+
+    Input/Output Redirection: Supports stdout redirection (>) and stderr redirection (2>) (if implemented).
+
+4.  Interactive UX
+
+    Autocompletion: Press <TAB> to autocomplete executables in the system $PATH.
+
+        Includes Longest Common Prefix (LCP) detection for multiple matches.
+
+    History Navigation: Use ↑ (Up) and ↓ (Down) arrows to navigate previous commands.
+
+        Implemented using an index pointer to avoid destructive memory operations.
+
+5.  Persistence
+
+    Session History: Commands are saved to a file defined by HISTFILE.
+
+    Smart Appending: On exit, the shell intelligently appends only new commands to the history file, preserving existing data without truncation.
+
+🧩 Technical Highlights
+
+Pipeline Architecture
+
+The pipeline engine is separated from the main event loop to ensure clean separation of concerns. It uses a "bucket brigade" strategy:
+
+    Iterates through command segments split by |.
+
+    Maintains a previous_command state.
+
+    Wires the stdout of the previous child process into the stdin of the current process.
+
+    Waits only for the final process in the chain to ensure the prompt returns correctly.
+
+Memory Safe History
+
+Unlike simple implementations that pop() commands off a stack, this shell uses a non-destructive index pointer pattern.
+
+    Storage: A Vec<String> stores the session history.
+
+    Navigation: A temporary history_index tracks the user's position during Up/Down navigation, resetting automatically when a new command is executed.
+
+🧪 Testing
+
+The project is validated against a rigorous suite of integration tests covering:
+
+    Partial autocompletion logic.
+
+    History file append/write modes.
+
+    Complex quoting and spacing edge cases.
