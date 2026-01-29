@@ -52,19 +52,21 @@ fn main() {
     let mut stdout = io::stdout();
     let mut local_history = Vec::<String>::new();
 
+    if let Ok(histfile_var) = env::var("HISTFILE") {
+        let mut file = File::open(histfile_var).unwrap();
+        let mut contents = String::new();
+
+        file.read_to_string(&mut contents).unwrap();
+
+        for lines in contents.lines() {
+            local_history.push(lines.to_string());
+        }
+    }
+
+    let index_for_exiting = local_history.len();
+
     loop {
         enable_raw_mode().unwrap();
-
-        if let Ok(histfile_var) = env::var("HISTFILE") {
-            let mut file = File::open(histfile_var).unwrap();
-            let mut contents = String::new();
-
-            file.read_to_string(&mut contents).unwrap();
-
-            for lines in contents.lines() {
-                local_history.push(lines.to_string());
-            }
-        }
 
         let mut history_index = local_history.len();
 
@@ -205,12 +207,15 @@ fn main() {
                                     Cmd::Exit => {
                                         if let Ok(histfile_var) = env::var("HISTFILE") {
                                             let mut file = OpenOptions::new()
-                                                .write(true)
+                                                .create(true)
+                                                .append(true)
                                                 .open(histfile_var)
                                                 .unwrap();
 
-                                            for cmd in local_history {
-                                                writeln!(file, "{}", cmd).unwrap();
+                                            for (i, cmd) in local_history.iter().enumerate() {
+                                                if i >= index_for_exiting {
+                                                    writeln!(file, "{}", cmd).unwrap();
+                                                }
                                             }
                                         }
                                         exit(0);
